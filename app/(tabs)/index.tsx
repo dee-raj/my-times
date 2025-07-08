@@ -38,7 +38,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.clockContainer}>
-        <AnalogClock size={Platform.OS === 'web' ? 220 : 180} />
+        <AnalogClock size={Platform.OS === 'web' ? 220 : 160} />
         <DigitalClock time={currentTime} />
       </View>
 
