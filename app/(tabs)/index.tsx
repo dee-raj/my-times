@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
+
 import { useTheme } from '@/context/ThemeContext';
 import { DigitalClock } from '@/components/Clock/DigitalClock';
 import { AnalogClock } from '@/components/Clock/AnalogClock';

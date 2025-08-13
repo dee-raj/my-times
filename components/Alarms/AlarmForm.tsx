@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, ScrollView, Switch } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useState } from 'react';
 import DateTimePicker from 'react-native-modal-datetime-picker';
@@ -19,6 +19,7 @@ export function AlarmForm({ initialValues, onSubmit, onCancel }: AlarmFormProps)
   const [label, setLabel] = useState(initialValues?.label || '');
   const [repeat, setRepeat] = useState(initialValues?.repeat || []);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [isActive, setIsActive] = useState(initialValues?.isActive ?? true);
 
   const handleTimeConfirm = (selectedTime: Date) => {
     if (Platform.OS !== 'web') {
@@ -41,16 +42,13 @@ export function AlarmForm({ initialValues, onSubmit, onCancel }: AlarmFormProps)
       } else {
         updated = [...prev, day];
       }
-
-      // Ensure the updated array is sorted according to daysOfWeek
+      // Sort according to daysOfWeek order
       return daysOfWeek.filter(d => updated.includes(d));
     });
   };
 
-
   const handleSubmit = () => {
     if (!time || isNaN(time.getTime())) {
-      // Show some alert or validation
       alert('Please select a valid time for the alarm.');
       return;
     }
@@ -59,7 +57,7 @@ export function AlarmForm({ initialValues, onSubmit, onCancel }: AlarmFormProps)
       time,
       label,
       repeat,
-      isActive: initialValues?.isActive ?? true,
+      isActive,
     };
     onSubmit(newAlarm);
   };
@@ -67,7 +65,7 @@ export function AlarmForm({ initialValues, onSubmit, onCancel }: AlarmFormProps)
   const timeDisplay = format(new Date(time), 'h:mm a');
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <TouchableOpacity
         onPress={() => setShowTimePicker(true)}
         style={[styles.timeContainer, { backgroundColor: colors.primaryLight, borderColor: colors.border }]}
@@ -121,6 +119,17 @@ export function AlarmForm({ initialValues, onSubmit, onCancel }: AlarmFormProps)
         </View>
       </View>
 
+      {/* Active Toggle */}
+      <View style={styles.activeToggleContainer}>
+        <Text style={[styles.label, { color: colors.text }]}>Active</Text>
+        <Switch
+          value={isActive}
+          onValueChange={setIsActive}
+          trackColor={{ false: '#767577', true: colors.primaryLight }}
+          thumbColor={isActive ? colors.primary : '#f4f3f4'}
+        />
+      </View>
+
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.cancelButton, { borderColor: colors.border }]}
@@ -138,7 +147,6 @@ export function AlarmForm({ initialValues, onSubmit, onCancel }: AlarmFormProps)
             {initialValues ? 'Update' : 'Create'}
           </Text>
         </TouchableOpacity>
-
       </View>
 
       {/* Time Picker - only for native platforms */}
@@ -177,7 +185,7 @@ export function AlarmForm({ initialValues, onSubmit, onCancel }: AlarmFormProps)
           <View style={styles.webTimePickerButtons}>
             <TouchableOpacity
               accessible
-              accessibilityLabel="Select Time"
+              accessibilityLabel="Cancel Time Picker"
               style={[styles.webTimeButton, { borderColor: colors.border }]}
               onPress={() => setShowTimePicker(false)}
             >
@@ -245,6 +253,13 @@ const styles = StyleSheet.create({
   dayText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
+  },
+  activeToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 4,
   },
   buttonContainer: {
     flexDirection: 'row',

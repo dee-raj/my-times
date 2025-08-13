@@ -5,11 +5,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Alarm {
   id: string;
-  time: Date ;
+  time: Date;
   label?: string;
   isActive: boolean;
   repeat?: string[]; // e.g., ['Mon', 'Wed']
-  notificationId?: string | null;
+  notificationId?: string[] | null; // changed to array of strings
 }
 
 // Configure notifications
@@ -19,12 +19,11 @@ if (Platform.OS !== 'web') {
       shouldShowAlert: true,
       shouldPlaySound: true,
       shouldSetBadge: false,
-      shouldShowBanner: true,   // add this
-      shouldShowList: true,     // add this
+      shouldShowBanner: true,
+      shouldShowList: true,
     }),
   });
 }
-
 
 export function useAlarms() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
@@ -35,7 +34,12 @@ export function useAlarms() {
 
   const saveAlarms = async (updatedAlarms: Alarm[]) => {
     try {
-      await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+      // Convert Date objects to ISO strings for storage
+      const serialized = updatedAlarms.map(alarm => ({
+        ...alarm,
+        time: alarm.time.toISOString(),
+      }));
+      await AsyncStorage.setItem('alarms', JSON.stringify(serialized));
     } catch (error) {
       console.error('Error saving alarms:', error);
     }
@@ -45,8 +49,11 @@ export function useAlarms() {
     try {
       const savedAlarms = await AsyncStorage.getItem('alarms');
       if (savedAlarms) {
-        const parsedAlarms: Alarm[] = JSON.parse(savedAlarms);
-        const formattedAlarms = parsedAlarms.map(alarm => ({
+        // Parse and tell TS what shape is expected (time is string here)
+        const parsedAlarms = JSON.parse(savedAlarms) as (Omit<Alarm, 'time'> & { time: string })[];
+
+        // Map and convert time string to Date object for each alarm
+        const formattedAlarms: Alarm[] = parsedAlarms.map(alarm => ({
           ...alarm,
           time: new Date(alarm.time),
         }));
@@ -57,53 +64,79 @@ export function useAlarms() {
     }
   };
 
-  const scheduleAlarmNotification = async (alarm: Alarm): Promise<string | null> => {
+
+  const cancelNotifications = async (notificationIds: string[] | null | undefined) => {
+    if (!notificationIds) return;
+    await Promise.all(
+      notificationIds.map(id =>
+        Notifications.cancelScheduledNotificationAsync(id).catch(e => {
+          console.warn('Failed to cancel notification', id, e);
+        })
+      )
+    );
+  };
+
+  const scheduleAlarmNotification = async (alarm: Alarm): Promise<string[] | null> => {
     if (Platform.OS === 'web') return null;
 
     try {
-      if (alarm.notificationId) {
-        await Notifications.cancelScheduledNotificationAsync(alarm.notificationId);
-      }
+      // Cancel old notifications if any
+      await cancelNotifications(alarm.notificationId);
 
       if (!alarm.isActive) return null;
 
       const alarmTime = new Date(alarm.time);
       const now = new Date();
 
+      // Helper for formatted time string
+      const formatTime = () => {
+        const hour12 = alarmTime.getHours() % 12 || 12;
+        const minutes = alarmTime.getMinutes().toString().padStart(2, '0');
+        const ampm = alarmTime.getHours() >= 12 ? 'PM' : 'AM';
+        return `${hour12}:${minutes} ${ampm}`;
+      };
+
       if (alarm.repeat && alarm.repeat.length > 0) {
+        const notificationIds: string[] = [];
+        const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
         for (const day of alarm.repeat) {
-          const dayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(day);
-          if (dayIndex !== -1) {
-            const nextDate = new Date();
-            const currentDay = nextDate.getDay();
-            const daysUntilNext = (dayIndex - currentDay + 7) % 7;
+          const dayIndex = weekdays.indexOf(day);
+          if (dayIndex === -1) continue;
 
-            nextDate.setDate(nextDate.getDate() + daysUntilNext);
+          const nextDate = new Date();
+          const currentDay = nextDate.getDay();
+          let daysUntilNext = (dayIndex - currentDay + 7) % 7;
+
+          // If today and time already passed, schedule for next week
+          if (daysUntilNext === 0) {
             nextDate.setHours(alarmTime.getHours(), alarmTime.getMinutes(), 0, 0);
-
             if (nextDate <= now) {
-              nextDate.setDate(nextDate.getDate() + 7);
+              daysUntilNext = 7;
             }
-
-            const notificationId = await Notifications.scheduleNotificationAsync({
-              content: {
-                title: alarm.label || 'Alarm',
-                body: `It's ${alarmTime.getHours() % 12 || 12}:${alarmTime.getMinutes().toString().padStart(2, '0')} ${alarmTime.getHours() >= 12 ? 'PM' : 'AM'}`,
-                sound: true,
-              },
-              trigger: {
-                type: 'calendar',
-                weekday: dayIndex + 1,
-                hour: nextDate.getHours(),
-                minute: nextDate.getMinutes(),
-                repeats: true,
-              } as Notifications.CalendarTriggerInput,
-            });
-
-
-            return notificationId;
           }
+
+          nextDate.setDate(nextDate.getDate() + daysUntilNext);
+          nextDate.setHours(alarmTime.getHours(), alarmTime.getMinutes(), 0, 0);
+
+          const notificationId = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: alarm.label || 'Alarm',
+              body: `It's ${formatTime()}`,
+              sound: true,
+            },
+            trigger: {
+              repeats: true,
+              weekday: dayIndex + 1,
+              hour: alarmTime.getHours(),
+              minute: alarmTime.getMinutes(),
+            } as Notifications.CalendarTriggerInput,
+          });
+
+          notificationIds.push(notificationId);
         }
+
+        return notificationIds;
       } else {
         if (alarmTime <= now) {
           alarmTime.setDate(alarmTime.getDate() + 1);
@@ -114,28 +147,27 @@ export function useAlarms() {
         const notificationId = await Notifications.scheduleNotificationAsync({
           content: {
             title: alarm.label || 'Alarm',
-            body: `It's ${alarmTime.getHours() % 12 || 12}:${alarmTime.getMinutes().toString().padStart(2, '0')} ${alarmTime.getHours() >= 12 ? 'PM' : 'AM'}`,
+            body: `It's ${formatTime()}`,
             sound: true,
           },
           trigger: {
             seconds: secondsUntilAlarm,
-          } as Notifications.CalendarTriggerInput,
+            repeats: false,
+          } as Notifications.NotificationTriggerInput,
         });
 
-        return notificationId;
+        return [notificationId];
       }
     } catch (error) {
       console.error('Error scheduling notification:', error);
       return null;
     }
-
-    return null;
   };
 
   const addAlarm = async (newAlarm: Alarm) => {
     if (Platform.OS !== 'web' && newAlarm.isActive) {
-      const notificationId = await scheduleAlarmNotification(newAlarm);
-      newAlarm.notificationId = notificationId;
+      const notificationIds = await scheduleAlarmNotification(newAlarm);
+      newAlarm.notificationId = notificationIds;
     }
 
     const updatedAlarms = [...alarms, newAlarm];
@@ -145,8 +177,11 @@ export function useAlarms() {
 
   const updateAlarm = async (updatedAlarm: Alarm) => {
     if (Platform.OS !== 'web' && updatedAlarm.isActive) {
-      const notificationId = await scheduleAlarmNotification(updatedAlarm);
-      updatedAlarm.notificationId = notificationId;
+      const notificationIds = await scheduleAlarmNotification(updatedAlarm);
+      updatedAlarm.notificationId = notificationIds;
+    } else if (Platform.OS !== 'web' && updatedAlarm.notificationId) {
+      await cancelNotifications(updatedAlarm.notificationId);
+      updatedAlarm.notificationId = null;
     }
 
     const updatedAlarms = alarms.map(alarm =>
@@ -161,7 +196,7 @@ export function useAlarms() {
     const alarmToDelete = alarms.find(alarm => alarm.id === id);
 
     if (Platform.OS !== 'web' && alarmToDelete?.notificationId) {
-      await Notifications.cancelScheduledNotificationAsync(alarmToDelete.notificationId);
+      await cancelNotifications(alarmToDelete.notificationId);
     }
 
     const updatedAlarms = alarms.filter(alarm => alarm.id !== id);
@@ -177,10 +212,10 @@ export function useAlarms() {
 
           if (Platform.OS !== 'web') {
             if (isActive) {
-              const notificationId = await scheduleAlarmNotification(updatedAlarm);
-              updatedAlarm.notificationId = notificationId;
+              const notificationIds = await scheduleAlarmNotification(updatedAlarm);
+              updatedAlarm.notificationId = notificationIds;
             } else if (alarm.notificationId) {
-              await Notifications.cancelScheduledNotificationAsync(alarm.notificationId);
+              await cancelNotifications(alarm.notificationId);
               updatedAlarm.notificationId = null;
             }
           }

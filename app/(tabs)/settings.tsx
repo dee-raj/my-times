@@ -4,6 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useState } from 'react';
 import { Palette, Volume2, Moon, Bell, Clock, Info } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { Link } from 'expo-router';
 
 export default function SettingsScreen() {
   const { theme, toggleTheme, colors } = useTheme();
@@ -88,7 +89,7 @@ export default function SettingsScreen() {
           </Text>
 
           <View style={styles.reminderOptions}>
-            {[15, 30, 60, 120].map((minutes) => (
+            {[15, 30, 45, 60, 120].map((minutes) => (
               <TouchableOpacity
                 key={minutes}
                 style={[
@@ -118,10 +119,19 @@ export default function SettingsScreen() {
             <Info size={20} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
           </View>
+          <Text style={{ color: colors.text, paddingHorizontal: 12 }}>This is a simple time tracker and scheduler app.</Text>
 
           <View style={[styles.settingItem, { borderBottomWidth: 0 }]}>
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>Version</Text>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>Developer</Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                <Link href="https://github.com/dee-raj" style={{ color: colors.primary }}>
+                  Dhurbaraj Joshi
+                </Link>
+              </Text>
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>App Version</Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
                 1.0.0
               </Text>

@@ -211,9 +211,10 @@ const styles = StyleSheet.create({
   blur: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   formContainer: {
     width: '90%',
+    height: '90%',
     maxWidth: 400,
     borderRadius: 16,
-    padding: 24,
+    padding: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

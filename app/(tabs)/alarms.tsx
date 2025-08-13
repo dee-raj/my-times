@@ -18,76 +18,94 @@ import { useAlarms } from '@/hooks/useAlarms';
 import { AlarmItem } from '@/components/Alarms/AlarmItem';
 import { AlarmForm } from '@/components/Alarms/AlarmForm';
 
-import type { Alarm } from '@/hooks/useAlarms'; // Assuming you have this type defined
+import type { Alarm } from '@/hooks/useAlarms';
 
 export default function AlarmsScreen() {
   const { colors } = useTheme();
   const { alarms, addAlarm, updateAlarm, deleteAlarm, toggleAlarm } = useAlarms();
 
-  // editingAlarm typed as Alarm or null
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const handleAddAlarm = useCallback((newAlarm: Alarm) => {
-    addAlarm(newAlarm);
-    setShowForm(false);
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-  }, [addAlarm]);
+  const handleAddAlarm = useCallback(
+    async (newAlarm: Alarm) => {
+      addAlarm(newAlarm);
+      setShowForm(false);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    },
+    [addAlarm]
+  );
 
   const handleEditAlarm = useCallback((alarm: Alarm) => {
     setEditingAlarm(alarm);
     setShowForm(true);
   }, []);
 
-  const handleUpdateAlarm = useCallback((updatedAlarm: Alarm) => {
-    updateAlarm(updatedAlarm);
+  const handleUpdateAlarm = useCallback(
+    async (updatedAlarm: Alarm) => {
+      updateAlarm(updatedAlarm);
+      setShowForm(false);
+      setEditingAlarm(null);
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    },
+    [updateAlarm]
+  );
+
+  const handleDeleteAlarm = useCallback(
+    (id: string) => {
+      if (Platform.OS === 'web') {
+        if (confirm('Are you sure you want to delete this alarm?')) {
+          deleteAlarm(id);
+        }
+      } else {
+        Alert.alert(
+          'Delete Alarm',
+          'Are you sure you want to delete this alarm?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              onPress: async () => {
+                deleteAlarm(id);
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              },
+              style: 'destructive',
+            },
+          ],
+          { cancelable: true }
+        );
+      }
+    },
+    [deleteAlarm]
+  );
+
+  const handleCancel = useCallback(async () => {
     setShowForm(false);
     setEditingAlarm(null);
     if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-  }, [updateAlarm]);
-
-  const handleDeleteAlarm = useCallback((id: string) => {
-    if (Platform.OS === 'web') {
-      if (confirm('Are you sure you want to delete this alarm?')) {
-        deleteAlarm(id);
-      }
-    } else {
-      Alert.alert(
-        'Delete Alarm',
-        'Are you sure you want to delete this alarm?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            onPress: () => {
-              deleteAlarm(id);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            },
-            style: 'destructive',
-          },
-        ]
-      );
-    }
-  }, [deleteAlarm]);
+  }, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Alarms</Text>
         <TouchableOpacity
-          onPress={() => {
+          onPress={async () => {
             setEditingAlarm(null);
             setShowForm(true);
             if (Platform.OS !== 'web') {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
           }}
           style={styles.addButton}
           accessibilityLabel="Add new alarm"
+          accessibilityRole="button"
         >
           <PlusCircle size={24} color={colors.primary} />
         </TouchableOpacity>
@@ -105,7 +123,8 @@ export default function AlarmsScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <AlarmItem
-              alarm={item}
+              key={item.id}
+              alarm={{ ...item, time: new Date(item.time) }}
               onToggle={toggleAlarm}
               onEdit={handleEditAlarm}
               onDelete={handleDeleteAlarm}
@@ -113,11 +132,12 @@ export default function AlarmsScreen() {
           )}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
+          accessibilityRole="list"
         />
       )}
 
       {showForm && (
-        <View style={styles.formOverlay} pointerEvents="box-none">
+        <View style={styles.formOverlay} pointerEvents="box-none" accessible accessibilityViewIsModal>
           <BlurView intensity={Platform.OS === 'ios' ? 15 : 30} style={styles.blur} tint="dark">
             <View style={[styles.formContainer, { backgroundColor: colors.card }]}>
               <View style={styles.formHeader}>
@@ -125,14 +145,9 @@ export default function AlarmsScreen() {
                   {editingAlarm ? 'Edit Alarm' : 'Add Alarm'}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    setShowForm(false);
-                    setEditingAlarm(null);
-                    if (Platform.OS !== 'web') {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
-                  }}
+                  onPress={handleCancel}
                   accessibilityLabel="Close alarm form"
+                  accessibilityRole="button"
                 >
                   <X size={24} color={colors.text} />
                 </TouchableOpacity>
@@ -140,10 +155,7 @@ export default function AlarmsScreen() {
               <AlarmForm
                 initialValues={editingAlarm ?? undefined}
                 onSubmit={editingAlarm ? handleUpdateAlarm : handleAddAlarm}
-                onCancel={() => {
-                  setShowForm(false);
-                  setEditingAlarm(null);
-                }}
+                onCancel={handleCancel}
               />
             </View>
           </BlurView>
@@ -200,6 +212,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '90%',
     maxWidth: 400,
+    height: '90%',
     borderRadius: 16,
     padding: 24,
     shadowColor: '#000',

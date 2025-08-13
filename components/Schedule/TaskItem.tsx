@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   metadataContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    // flexWrap: 'wrap',
   },
   metadataItem: {
     flexDirection: 'row',

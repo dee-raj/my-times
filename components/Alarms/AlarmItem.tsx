@@ -1,33 +1,34 @@
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { useTheme } from '@/context/ThemeContext';
+import React, { useRef } from 'react';
+import {
+  View, Text, StyleSheet,
+  TouchableOpacity, Platform
+} from 'react-native';
 import { format } from 'date-fns';
 import { Edit, Trash, Bell } from 'lucide-react-native';
 import { Switch } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
-interface AlarmProps {
-  id: string;
-  time: Date;
-  label: string;
-  isActive: boolean;
-  repeat: string[];
-}
+import { Alarm } from '@/hooks/useAlarms';
+import { useTheme } from '@/context/ThemeContext';
 
 interface AlarmItemProps {
-  alarm: AlarmProps;
+  alarm: Alarm;
   onToggle: (id: string, value: boolean) => void;
-  onEdit: (alarm: AlarmProps) => void;
+  onEdit: (alarm: Alarm) => void;
   onDelete: (id: string) => void;
 }
 
 export function AlarmItem({ alarm, onToggle, onEdit, onDelete }: AlarmItemProps) {
   const { colors } = useTheme();
 
+  const toggleTimeout = useRef<number | null>(null);
+  const debounceDelay = 300; // ms
+
   const timeString = format(new Date(alarm.time), 'h:mm');
   const ampm = format(new Date(alarm.time), 'a');
 
   const getRepeatText = () => {
-    if (alarm.repeat.length === 0) {
+    if (!alarm.repeat || alarm.repeat.length === 0) {
       return 'Once';
     }
     if (alarm.repeat.length === 7) {
@@ -50,10 +51,17 @@ export function AlarmItem({ alarm, onToggle, onEdit, onDelete }: AlarmItemProps)
   };
 
   const handleToggle = () => {
+    if (toggleTimeout.current !== null) {
+      // debounce active, ignore toggle
+      return;
+    }
     onToggle(alarm.id, !alarm.isActive);
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    toggleTimeout.current = setTimeout(() => {
+      toggleTimeout.current = null;
+    }, debounceDelay);
   };
 
   return (

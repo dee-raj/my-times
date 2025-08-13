@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
-    withRepeat,
     withTiming,
-    withDelay,
+    withRepeat,
     Easing,
 } from 'react-native-reanimated';
 
@@ -18,28 +17,13 @@ export function AnalogClock({ size = 200 }: AnalogClockProps) {
     const { colors, theme } = useTheme();
     const [date, setDate] = useState(new Date());
 
-    // Handle ticking
-    const secondOpacity = useSharedValue(1);
-
-    // Tick effect for seconds hand
     useEffect(() => {
-        secondOpacity.value = withRepeat(
-            withDelay(
-                0,
-                withTiming(0.3, { duration: 500, easing: Easing.bezier(0.25, 0.1, 0.25, 1) })
-            ),
-            -1,
-            true
-        );
-
         const interval = setInterval(() => {
             setDate(new Date());
         }, 1000);
-
         return () => clearInterval(interval);
     }, []);
 
-    // Calculate hand angles
     const hours = date.getHours() % 12;
     const minutes = date.getMinutes();
     const seconds = date.getSeconds();
@@ -48,14 +32,20 @@ export function AnalogClock({ size = 200 }: AnalogClockProps) {
     const minuteAngle = minutes * 6;
     const secondAngle = seconds * 6;
 
-    // Animated style for second hand
+    const secondRotation = useSharedValue(secondAngle);
+
+    useEffect(() => {
+        secondRotation.value = withTiming(secondAngle, {
+            duration: 300,
+            easing: Easing.linear,
+        });
+    }, [seconds]);
+
     const secondHandStyle = useAnimatedStyle(() => {
         return {
-            opacity: secondOpacity.value,
             transform: [
-                { translateY: -size * 0.3 },
-                { rotateZ: `${secondAngle}deg` },
-                { translateY: size * 0.3 },
+                { rotateZ: `${secondRotation.value}deg` },
+                { translateY: -size * 0.2 },
             ],
         };
     });
@@ -68,30 +58,32 @@ export function AnalogClock({ size = 200 }: AnalogClockProps) {
                     width: size,
                     height: size,
                     borderRadius: size / 2,
-                    backgroundColor: theme === 'light' ? colors.card : colors.card,
+                    backgroundColor: colors.card,
                     borderColor: colors.border,
                 },
             ]}
         >
             {/* Hour markers */}
-            {[...Array(12)].map((_, i) => (
-                <View
-                    key={i}
-                    style={[
-                        styles.hourMark,
-                        {
-                            width: i % 3 === 0 ? 4 : 2,
-                            height: i % 3 === 0 ? 12 : 8,
-                            backgroundColor: i % 3 === 0 ? colors.primary : colors.textSecondary,
-                            transform: [
-                                { translateY: -size / 2 + 6 },
-                                { rotateZ: `${i * 30}deg` },
-                                { translateY: size / 2 - 6 },
-                            ],
-                        },
-                    ]}
-                />
-            ))}
+            {[...Array(12)].map((_, i) => {
+                const rotate = i * 30;
+                return (
+                    <View
+                        key={i}
+                        style={[
+                            styles.hourMark,
+                            {
+                                width: i % 3 === 0 ? 4 : 2,
+                                height: i % 3 === 0 ? 12 : 8,
+                                backgroundColor: i % 3 === 0 ? colors.primary : colors.textSecondary,
+                                transform: [
+                                    { rotateZ: `${rotate}deg` },
+                                    { translateY: -size / 2 + 10 },
+                                ],
+                            },
+                        ]}
+                    />
+                );
+            })}
 
             {/* Hour hand */}
             <View
@@ -103,9 +95,8 @@ export function AnalogClock({ size = 200 }: AnalogClockProps) {
                         borderRadius: 3,
                         backgroundColor: colors.text,
                         transform: [
-                            { translateY: -size * 0.125 },
                             { rotateZ: `${hourAngle}deg` },
-                            { translateY: size * 0.125 },
+                            { translateY: -size * 0.125 },
                         ],
                     },
                 ]}
@@ -121,9 +112,8 @@ export function AnalogClock({ size = 200 }: AnalogClockProps) {
                         borderRadius: 2,
                         backgroundColor: colors.text,
                         transform: [
-                            { translateY: -size * 0.2 },
                             { rotateZ: `${minuteAngle}deg` },
-                            { translateY: size * 0.2 },
+                            { translateY: -size * 0.2 },
                         ],
                     },
                 ]}
@@ -147,10 +137,9 @@ export function AnalogClock({ size = 200 }: AnalogClockProps) {
                 style={[
                     styles.centerCap,
                     {
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        marginTop: -36,
+                        width: size * 0.05,
+                        height: size * 0.05,
+                        borderRadius: (size * 0.05) / 2,
                         backgroundColor: colors.primary,
                     },
                 ]}
@@ -173,7 +162,6 @@ const styles = StyleSheet.create({
     hourMark: {
         position: 'absolute',
         alignSelf: 'center',
-        marginTop: 145
     },
     hourHand: {
         position: 'absolute',
@@ -196,5 +184,3 @@ const styles = StyleSheet.create({
         zIndex: 5,
     },
 });
-
-// export const AnalogClock = ({ size = 0 }) => <></>;
