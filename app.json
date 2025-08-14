@@ -21,6 +21,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "android": {
+      "package": "com.deemax.times"
     }
   }
 }

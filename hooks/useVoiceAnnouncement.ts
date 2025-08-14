@@ -11,7 +11,7 @@ export function useVoiceAnnouncement() {
     const period = hour >= 12 ? 'PM' : 'AM';
 
     // Create the announcement text
-    const announcement = `It's ${hourString} ${period}`;
+    const announcement = `It's ${hourString} ${period} now.`;
 
     // Use speech synthesis to announce the time
     if (Platform.OS !== 'web') {
