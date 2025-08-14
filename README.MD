@@ -33,7 +33,7 @@
 
 ## 🧩 Folder Structure
 
-
+<pre>
 .
 ├── components/
 │   └── Alarms/
@@ -51,7 +51,7 @@
 │   └── splash.png
 ├── App.tsx
 └── ...
-
+</pre>
 
 ## 🔐 PART 1: Create a Keystore & Signing Config
 
@@ -274,5 +274,4 @@ Have suggestions? Open an issue or contact via GitHub:
 
 👉 [github.com/dee-raj/my-times](https://github.com/dee-raj/my-times)
 
-```
 
