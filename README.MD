@@ -1,10 +1,7 @@
-
-```markdown
 # ⏰ my-times — Android App Release Guide
 
 **my-times** is a modern, customizable alarm clock app built with **React Native** and **Expo**. This guide walks you through preparing, signing, and publishing the app to the **Google Play Store**.
 
----
 
 ## 📦 App Overview
 
@@ -20,7 +17,6 @@
 - 🎨 Beautiful UI (Expo Blur, Safe Area, Lucide Icons)
 - 📤 Ready for Play Store release
 
----
 
 ## 🚀 Screenshots
 
@@ -34,11 +30,9 @@
   <img src="screenshots/screen8.png" width="200" />
 </p>
 
----
 
 ## 🧩 Folder Structure
 
-```
 
 .
 ├── components/
@@ -58,9 +52,6 @@
 ├── App.tsx
 └── ...
 
-````
-
----
 
 ## 🔐 PART 1: Create a Keystore & Signing Config
 
@@ -74,18 +65,14 @@ keytool -genkeypair -v \
 ````
 
 Move the `.keystore` file to:
-
-```
 android/app/my-release-key.keystore
-```
 
----
 
 ### ✅ Configure Gradle Properties
 
 Edit `android/gradle.properties`:
 
-```properties
+```bash
 MYAPP_UPLOAD_STORE_FILE=my-release-key.keystore
 MYAPP_UPLOAD_KEY_ALIAS=my-key-alias
 MYAPP_UPLOAD_STORE_PASSWORD=your-store-password
@@ -98,7 +85,7 @@ MYAPP_UPLOAD_KEY_PASSWORD=your-key-password
 
 In `signingConfigs`:
 
-```gradle
+```bash
 signingConfigs {
     release {
         storeFile file(MYAPP_UPLOAD_STORE_FILE)
@@ -111,7 +98,7 @@ signingConfigs {
 
 In `buildTypes > release`:
 
-```gradle
+```bash
 release {
     signingConfig signingConfigs.release
     minifyEnabled false
